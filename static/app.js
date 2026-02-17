@@ -207,7 +207,6 @@ async function handleEkipmanSubmit(e) {
         marka: document.getElementById('marka').value,
         model: document.getElementById('model').value,
         seri_no: document.getElementById('seri_no').value,
-        barkod: document.getElementById('barkod').value,
         durum: document.getElementById('durum').value,
         temin_tarihi: document.getElementById('temin_tarihi').value || null,
         temin_fiyati: parseFloat(document.getElementById('temin_fiyati').value) || null,
@@ -260,7 +259,6 @@ async function showEkipmanDetail(id) {
                     <tr><td><strong>Marka:</strong></td><td>${ekipman.marka || '-'}</td></tr>
                     <tr><td><strong>Model:</strong></td><td>${ekipman.model || '-'}</td></tr>
                     <tr><td><strong>Seri No:</strong></td><td>${ekipman.seri_no || '-'}</td></tr>
-                    <tr><td><strong>Barkod:</strong></td><td>${ekipman.barkod || '-'}</td></tr>
                     <tr><td><strong>Durum:</strong></td><td><span class="status-badge status-${ekipman.durum.toLowerCase().replace('ı', 'i')}">${ekipman.durum}</span></td></tr>
                     <tr><td><strong>Temin Tarihi:</strong></td><td>${ekipman.temin_tarihi ? new Date(ekipman.temin_tarihi).toLocaleDateString('tr-TR') : '-'}</td></tr>
                     <tr><td><strong>Temin Fiyatı:</strong></td><td>${ekipman.temin_fiyati ? ekipman.temin_fiyati + ' ₺' : '-'}</td></tr>
