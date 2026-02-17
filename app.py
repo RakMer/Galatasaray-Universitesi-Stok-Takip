@@ -10,12 +10,22 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///sto
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
-CORS(app)
+CORS(app, resources={
+    r"/api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
+    }
+})
 
 # Ana sayfa
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/test')
+def test():
+    return render_template('test.html')
 
 # Kategori endpoints
 @app.route('/api/kategoriler', methods=['GET'])

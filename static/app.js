@@ -1,5 +1,5 @@
 // API Base URL
-const API_URL = 'http://localhost:5000/api';
+const API_URL = '/api';
 
 // State
 let kategoriler = [];
@@ -15,10 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // Initialize App
 async function initApp() {
     await loadKategoriler();
+    populateKategoriSelects();
     await loadIstatistikler();
     await loadEkipmanlar();
     await loadHareketler();
-    populateKategoriSelects();
 }
 
 // Setup Event Listeners
@@ -74,8 +74,11 @@ function switchTab(tabName) {
 // Load Kategoriler
 async function loadKategoriler() {
     try {
+        console.log('Kategoriler yükleniyor...');
         const response = await fetch(`${API_URL}/kategoriler`);
+        console.log('API Response status:', response.status);
         kategoriler = await response.json();
+        console.log('Yüklenen kategoriler:', kategoriler);
     } catch (error) {
         console.error('Kategoriler yüklenemedi:', error);
         showAlert('Kategoriler yüklenemedi!', 'error');
@@ -84,12 +87,18 @@ async function loadKategoriler() {
 
 // Populate Kategori Selects
 function populateKategoriSelects() {
+    console.log('populateKategoriSelects çağrıldı, kategoriler:', kategoriler);
     const selects = [
         document.getElementById('kategori'),
         document.getElementById('kategori-filter')
     ];
 
     selects.forEach(select => {
+        if (!select) {
+            console.error('Select element bulunamadı!');
+            return;
+        }
+        
         if (select.id === 'kategori-filter') {
             select.innerHTML = '<option value="">Tüm Kategoriler</option>';
         } else {
@@ -102,6 +111,8 @@ function populateKategoriSelects() {
             option.textContent = kat.ad;
             select.appendChild(option);
         });
+        
+        console.log(`${select.id} dolduruldu, toplam ${select.options.length} seçenek`);
     });
 }
 

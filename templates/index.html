@@ -94,13 +94,11 @@
         <section id="ekle" class="tab-content">
             <h3>Yeni Ekipman Ekle</h3>
             <form id="ekipman-form" class="form-grid">
+
                 <div class="form-group">
-                    <label for="kategori">Kategori</label>
+                    <label for="kategori">Kategori *</label>
                     <select id="kategori" required>
-                        <option value="Klavye">Klavye</option>
-                        <option value="Monitör">Monitör/option>
-                        <option value="Fare">Fare</option>
-                        <option value="Kasa">Kasa</option>
+                        <option value="">Seçiniz...</option>
                     </select>
                 </div>
 
@@ -265,6 +263,6 @@
         </div>
     </footer>
 
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v=2"></script>
 </body>
 </html>
