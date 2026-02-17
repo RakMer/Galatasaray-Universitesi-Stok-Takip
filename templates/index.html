@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galatasaray Üniversitesi - Stok Takip Sistemi</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🎓 Galatasaray Üniversitesi</h1>
+            <h2>Bilgi İşlem Stok Takip Sistemi</h2>
+        </div>
+    </header>
+
+    <nav>
+        <div class="container">
+            <button class="tab-btn active" data-tab="dashboard">📊 Kontrol Paneli</button>
+            <button class="tab-btn" data-tab="ekipman">📦 Envanter Listesi</button>
+            <button class="tab-btn" data-tab="ekle">➕ Yeni Ekipman</button>
+            <button class="tab-btn" data-tab="hareketler">🔄 Hareketler</button>
+        </div>
+    </nav>
+
+    <main class="container">
+        <!-- Kontrol Paneli -->
+        <section id="dashboard" class="tab-content active">
+            <h3>İstatistikler</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h4>Toplam Ekipman</h4>
+                    <p class="stat-number" id="stat-toplam">0</p>
+                </div>
+                <div class="stat-card">
+                    <h4>Depoda</h4>
+                    <p class="stat-number" id="stat-depoda">0</p>
+                </div>
+                <div class="stat-card">
+                    <h4>Kullanımda</h4>
+                    <p class="stat-number" id="stat-kullanimda">0</p>
+                </div>
+                <div class="stat-card">
+                    <h4>Arızalı</h4>
+                    <p class="stat-number" id="stat-arizali">0</p>
+                </div>
+            </div>
+
+            <h3>Kategori Dağılımı</h3>
+            <div id="kategori-dagilim" class="kategori-list"></div>
+        </section>
+
+        <!-- Envanter Listesi -->
+        <section id="ekipman" class="tab-content">
+            <h3>Envanter Listesi</h3>
+            
+            <div class="filters">
+                <input type="text" id="search-input" placeholder="🔍 Ara (Marka, Model, Seri No...)">
+                <select id="kategori-filter">
+                    <option value="">Tüm Kategoriler</option>
+                </select>
+                <select id="durum-filter">
+                    <option value="">Tüm Durumlar</option>
+                    <option value="Depoda">Depoda</option>
+                    <option value="Kullanımda">Kullanımda</option>
+                    <option value="Arızalı">Arızalı</option>
+                    <option value="Hurda">Hurda</option>
+                </select>
+            </div>
+
+            <div class="table-container">
+                <table id="ekipman-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Kategori</th>
+                            <th>Marka</th>
+                            <th>Model</th>
+                            <th>Seri No</th>
+                            <th>Durum</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ekipman-tbody">
+                        <tr>
+                            <td colspan="7" class="loading">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Yeni Ekipman Ekleme -->
+        <section id="ekle" class="tab-content">
+            <h3>Yeni Ekipman Ekle</h3>
+            <form id="ekipman-form" class="form-grid">
+                <div class="form-group">
+                    <label for="kategori">Kategori</label>
+                    <select id="kategori" required>
+                        <option value="Klavye">Klavye</option>
+                        <option value="Monitör">Monitör/option>
+                        <option value="Fare">Fare</option>
+                        <option value="Kasa">Kasa</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="marka">Marka</label>
+                    <input type="text" id="marka" placeholder="Örn: Dell, HP, Cisco">
+                </div>
+
+                <div class="form-group">
+                    <label for="model">Model</label>
+                    <input type="text" id="model" placeholder="Model adı/numarası">
+                </div>
+
+                <div class="form-group">
+                    <label for="seri_no">Seri Numarası</label>
+                    <input type="text" id="seri_no" placeholder="Seri numarası">
+                </div>
+
+                <div class="form-group">
+                    <label for="barkod">Barkod</label>
+                    <input type="text" id="barkod" placeholder="Barkod numarası">
+                </div>
+
+                <div class="form-group">
+                    <label for="durum">Durum</label>
+                    <select id="durum">
+                        <option value="Depoda">Depoda</option>
+                        <option value="Kullanımda">Kullanımda</option>
+                        <option value="Arızalı">Arızalı</option>
+                        <option value="Hurda">Hurda</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="temin_tarihi">Temin Tarihi</label>
+                    <input type="date" id="temin_tarihi">
+                </div>
+
+                <div class="form-group">
+                    <label for="temin_fiyati">Temin Fiyatı (₺)</label>
+                    <input type="number" id="temin_fiyati" step="0.01" placeholder="0.00">
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="tedarikci">Tedarikçi</label>
+                    <input type="text" id="tedarikci" placeholder="Tedarikçi firma adı">
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="notlar">Notlar</label>
+                    <textarea id="notlar" rows="3" placeholder="Ek bilgiler ve notlar..."></textarea>
+                </div>
+
+                <div class="form-actions full-width">
+                    <button type="submit" class="btn btn-primary">Ekipman Ekle</button>
+                    <button type="reset" class="btn btn-secondary">Temizle</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Hareketler -->
+        <section id="hareketler" class="tab-content">
+            <h3>Ekipman Hareketleri</h3>
+            
+            <div class="hareket-form-container">
+                <h4>Yeni Hareket Ekle</h4>
+                <form id="hareket-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="hareket-ekipman-id">Ekipman ID *</label>
+                            <input type="number" id="hareket-ekipman-id" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="hareket-tipi">Hareket Tipi *</label>
+                            <select id="hareket-tipi" required>
+                                <option value="">Seçiniz...</option>
+                                <option value="Giriş">Giriş</option>
+                                <option value="Çıkış">Çıkış (Zimmet)</option>
+                                <option value="İade">İade</option>
+                                <option value="Transfer">Transfer</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="kullanici-adi">Kullanıcı Adı</label>
+                            <input type="text" id="kullanici-adi" placeholder="Adı Soyadı">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="personel-no">Personel No</label>
+                            <input type="text" id="personel-no" placeholder="Personel numarası">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="birim">Birim/Departman</label>
+                            <input type="text" id="birim" placeholder="Örn: Bilgi İşlem">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="lokasyon">Lokasyon</label>
+                            <input type="text" id="lokasyon" placeholder="Bina/Kat/Oda">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="teslim-alan">Teslim Alan</label>
+                            <input type="text" id="teslim-alan" placeholder="İşlemi yapan">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="onaylayan">Onaylayan</label>
+                            <input type="text" id="onaylayan" placeholder="Onaylayan yönetici">
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="hareket-aciklama">Açıklama</label>
+                            <textarea id="hareket-aciklama" rows="2" placeholder="Ek bilgiler..."></textarea>
+                        </div>
+
+                        <div class="form-actions full-width">
+                            <button type="submit" class="btn btn-primary">Hareket Kaydet</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <h4>Son Hareketler</h4>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tarih</th>
+                            <th>Ekipman ID</th>
+                            <th>Tip</th>
+                            <th>Kullanıcı</th>
+                            <th>Birim</th>
+                            <th>Lokasyon</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hareketler-tbody">
+                        <tr>
+                            <td colspan="6" class="loading">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3 id="modal-title">Ekipman Detayı</h3>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Galatasaray Üniversitesi - Bilgi İşlem Departmanı</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
