@@ -34,6 +34,32 @@ def get_kategoriler():
     kategoriler = Kategori.query.all()
     return jsonify([k.to_dict() for k in kategoriler])
 
+@app.route('/api/kategoriler/<int:id>', methods=['DELETE'])
+def delete_kategori(id):
+    """Kategori sil"""
+    try:
+        kategori = Kategori.query.get_or_404(id)
+        
+        # Bu kategoride ekipman var mı kontrol et
+        ekipman_sayisi = Ekipman.query.filter_by(kategori=kategori.ad).count()
+        if ekipman_sayisi > 0:
+            return jsonify({
+                'success': False, 
+                'error': f'Bu kategoride {ekipman_sayisi} adet ekipman var. Önce ekipmanları silin veya başka kategoriye taşıyın.'
+            }), 400
+        
+        kategori_adi = kategori.ad
+        db.session.delete(kategori)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'"{kategori_adi}" kategorisi silindi.'
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+
 # Ekipman endpoints
 @app.route('/api/ekipman', methods=['GET'])
 def get_ekipman():
@@ -74,6 +100,17 @@ def ekipman_ekle():
     data = request.json
     
     try:
+        # Kategori kontrolü - eğer veritabanında yoksa ekle
+        kategori_adi = data['kategori']
+        kategori = Kategori.query.filter_by(ad=kategori_adi).first()
+        
+        if not kategori:
+            # Yeni kategori oluştur
+            yeni_kategori = Kategori(ad=kategori_adi, aciklama='Kullanıcı tanımlı')
+            db.session.add(yeni_kategori)
+            db.session.commit()
+            print(f"Yeni kategori eklendi: {kategori_adi}")
+        
         # Tarih dönüşümü
         temin_tarihi = None
         if data.get('temin_tarihi'):

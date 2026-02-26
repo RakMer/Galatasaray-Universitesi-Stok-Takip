@@ -118,6 +118,65 @@ function setupSearchableDropdown() {
     
     console.log('Searchable dropdown kuruluyor...');
     
+    // Levenshtein Distance - benzerlik hesaplama
+    function levenshteinDistance(str1, str2) {
+        const len1 = str1.length;
+        const len2 = str2.length;
+        const matrix = [];
+        
+        for (let i = 0; i <= len1; i++) {
+            matrix[i] = [i];
+        }
+        for (let j = 0; j <= len2; j++) {
+            matrix[0][j] = j;
+        }
+        
+        for (let i = 1; i <= len1; i++) {
+            for (let j = 1; j <= len2; j++) {
+                if (str1.charAt(i - 1) === str2.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1,
+                        matrix[i][j - 1] + 1,
+                        matrix[i - 1][j] + 1
+                    );
+                }
+            }
+        }
+        
+        return matrix[len1][len2];
+    }
+    
+    // Benzerlik yüzdesi hesapla
+    function similarity(str1, str2) {
+        const longer = str1.length > str2.length ? str1 : str2;
+        const shorter = str1.length > str2.length ? str2 : str1;
+        const longerLength = longer.length;
+        if (longerLength === 0) return 1.0;
+        return (longerLength - levenshteinDistance(longer, shorter)) / longerLength;
+    }
+    
+    // En benzer kategoriyi bul
+    function findSimilarCategory(inputValue) {
+        if (!inputValue || inputValue.length < 2) return null;
+        
+        const inputLower = inputValue.toLowerCase();
+        let bestMatch = null;
+        let bestScore = 0;
+        
+        kategoriler.forEach(kat => {
+            const score = similarity(inputLower, kat.ad.toLowerCase());
+            if (score > bestScore && score < 1.0) { // Tam eşleşme değilse
+                bestScore = score;
+                bestMatch = kat.ad;
+            }
+        });
+        
+        // %70'den fazla benzerlik varsa öner
+        return bestScore >= 0.7 ? { name: bestMatch, score: bestScore } : null;
+    }
+    
     // Listeyi doldur
     function populateList(filter = '') {
         list.innerHTML = '';
@@ -134,6 +193,39 @@ function setupSearchableDropdown() {
             };
             list.appendChild(div);
         });
+        
+        // Eğer filtrelenmiş sonuç yoksa ve benzer kategori varsa öner
+        if (filtered.length === 0 && filter.length >= 2) {
+            const similar = findSimilarCategory(filter);
+            if (similar) {
+                const suggestionDiv = document.createElement('div');
+                suggestionDiv.style.background = '#fff3cd';
+                suggestionDiv.style.borderLeft = '3px solid #ffc107';
+                suggestionDiv.innerHTML = `
+                    <div style="font-weight: 500; color: #856404;">
+                        <span style="font-size: 0.9em;">💡 Şunu mu demek istediniz?</span>
+                    </div>
+                    <div style="font-size: 1.1em; margin-top: 0.3rem; color: #000;">
+                        ${similar.name}
+                    </div>
+                `;
+                suggestionDiv.onclick = () => {
+                    input.value = similar.name;
+                    list.classList.remove('show');
+                };
+                list.appendChild(suggestionDiv);
+                
+                // "Yine de yeni ekle" seçeneği
+                const newDiv = document.createElement('div');
+                newDiv.style.borderTop = '1px solid #ddd';
+                newDiv.style.fontWeight = '500';
+                newDiv.innerHTML = `➕ Yeni kategori: "${filter}"`;
+                newDiv.onclick = () => {
+                    list.classList.remove('show');
+                };
+                list.appendChild(newDiv);
+            }
+        }
         
         console.log('Liste dolduruldu:', filtered.length, 'item');
     }
@@ -275,6 +367,11 @@ async function handleEkipmanSubmit(e) {
         if (result.success) {
             showAlert('Ekipman başarıyla eklendi!', 'success');
             document.getElementById('ekipman-form').reset();
+            
+            // Kategori listesini yeniden yükle
+            await loadKategoriler();
+            populateKategoriSelects();
+            
             await loadEkipmanlar();
             await loadIstatistikler();
         } else {
