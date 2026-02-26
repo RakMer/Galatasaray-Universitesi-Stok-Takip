@@ -88,31 +88,78 @@ async function loadKategoriler() {
 // Populate Kategori Selects
 function populateKategoriSelects() {
     console.log('populateKategoriSelects çağrıldı, kategoriler:', kategoriler);
-    const selects = [
-        document.getElementById('kategori'),
-        document.getElementById('kategori-filter')
-    ];
-
-    selects.forEach(select => {
-        if (!select) {
-            console.error('Select element bulunamadı!');
-            return;
-        }
-        
-        if (select.id === 'kategori-filter') {
-            select.innerHTML = '<option value="">Tüm Kategoriler</option>';
-        } else {
-            select.innerHTML = '<option value="">Seçiniz...</option>';
-        }
-
+    
+    // Normal select için (filter dropdown)
+    const filterSelect = document.getElementById('kategori-filter');
+    if (filterSelect) {
+        filterSelect.innerHTML = '<option value="">Tüm Kategoriler</option>';
         kategoriler.forEach(kat => {
             const option = document.createElement('option');
             option.value = kat.ad;
             option.textContent = kat.ad;
-            select.appendChild(option);
+            filterSelect.appendChild(option);
+        });
+        console.log('Filter select dolduruldu:', filterSelect.options.length);
+    }
+    
+    // Searchable dropdown için
+    setupSearchableDropdown();
+}
+
+// Setup Searchable Dropdown
+function setupSearchableDropdown() {
+    const input = document.getElementById('kategori');
+    const list = document.getElementById('kategori-list');
+    
+    if (!input || !list) {
+        console.error('Dropdown elementleri bulunamadı');
+        return;
+    }
+    
+    console.log('Searchable dropdown kuruluyor...');
+    
+    // Listeyi doldur
+    function populateList(filter = '') {
+        list.innerHTML = '';
+        const filtered = kategoriler.filter(kat => 
+            kat.ad.toLowerCase().includes(filter.toLowerCase())
+        );
+        
+        filtered.forEach(kat => {
+            const div = document.createElement('div');
+            div.textContent = kat.ad;
+            div.onclick = () => {
+                input.value = kat.ad;
+                list.classList.remove('show');
+            };
+            list.appendChild(div);
         });
         
-        console.log(`${select.id} dolduruldu, toplam ${select.options.length} seçenek`);
+        console.log('Liste dolduruldu:', filtered.length, 'item');
+    }
+    
+    // İlk yükleme
+    populateList();
+    
+    // Input focus - listeyi aç
+    input.addEventListener('focus', () => {
+        console.log('Input focus');
+        populateList(input.value);
+        list.classList.add('show');
+    });
+    
+    // Input değişikliği - filtrele
+    input.addEventListener('input', () => {
+        console.log('Input değişti:', input.value);
+        populateList(input.value);
+        list.classList.add('show');
+    });
+    
+    // Dışarı tıklama - kapat
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.searchable-dropdown')) {
+            list.classList.remove('show');
+        }
     });
 }
 

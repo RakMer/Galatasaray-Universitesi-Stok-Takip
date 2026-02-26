@@ -481,6 +481,70 @@ footer p {
     }
 }
 
+/* Searchable Dropdown */
+.searchable-dropdown {
+    position: relative;
+}
+
+.searchable-dropdown input {
+    width: 100%;
+    padding: 0.75rem;
+    padding-right: 2.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+.searchable-dropdown input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.dropdown-arrow {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #666;
+    user-select: none;
+    pointer-events: none;
+}
+
+.dropdown-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 5px 5px;
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.dropdown-list.show {
+    display: block;
+}
+
+.dropdown-list div {
+    padding: 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.dropdown-list div:hover {
+    background: var(--light-bg);
+}
+
+.dropdown-list div:last-child {
+    border-bottom: none;
+}
+
 /* Alert Messages */
 .alert {
     padding: 1rem;

@@ -102,9 +102,15 @@
 
                 <div class="form-group">
                     <label for="kategori">Kategori *</label>
-                    <select id="kategori" required>
-                        <option value="">Seçiniz...</option>
-                    </select>
+                    <div class="searchable-dropdown">
+                        <input type="text" 
+                               id="kategori" 
+                               placeholder="Kategori seçin veya arayın..." 
+                               autocomplete="off" 
+                               required>
+                        <div class="dropdown-arrow">▼</div>
+                        <div class="dropdown-list" id="kategori-list"></div>
+                    </div>
                 </div>
 
                 <div class="form-group">

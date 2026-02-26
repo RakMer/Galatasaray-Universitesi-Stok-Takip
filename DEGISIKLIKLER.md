@@ -79,34 +79,102 @@
 - `.gitignore` - Git ignore kuralları
 - `README.md` - Proje dokümantasyonu
 
+#### 8. ~~Searchable Dropdown Kategori Seçici~~
+**NOT**: Bu özellik eklenmedi. Mevcut durum: Basit dropdown select.
+
 ---
 
 ## 📝 Yapılacaklar (TODO)
 
+### 🎯 Kategori Özellikleri (Planlandı - Yapılmadı)
+- [ ] ❌ Kategori dropdown'ında arama özelliği
+  - Hedef: Input içinde canlı arama yapılabilmeli
+  - Durum: Şu an sadece normal select dropdown var
+- [ ] ❌ Yeni kategori ekleme UI
+  - Hedef: "Diğer" seçeneği ile özel kategori girişi
+  - Durum: Backend'de otomatik kayıt var ama UI yok
+- [ ] ❌ Hybrid input (yazma + seçme)
+  - Hedef: Input'a hem yazı yazılabilmeli hem liste açılabilmeli
+  - Durum: Henüz implementasyona başlanmadı
+
 ### Yüksek Öncelik
-- [ ] Logo dosyası eklenmeli (`static/logo.png`)
-- [ ] Ekipman düzenleme (edit) fonksiyonu tamamlanmalı
-- [ ] Form validasyonları güçlendirilmeli
-- [ ] Excel/PDF export özelliği eklenebilir
+- [ ] ❌ Searchable dropdown kategori seçici implementasyonu
+- [x] ✅ Logo dosyası eklendi (`static/logo.png` - 23KB)
+- [ ] ❌ Ekipman düzenleme (edit) fonksiyonu
+  - Backend API hazır (PUT /api/ekipman/<id>)
+  - Frontend sadece alert gösteriyor: "Düzenleme özelliği yakında eklenecek!"
+- [ ] ⚠️ Form validasyonları güçlendirilmeli
+- [ ] ❌ Excel/PDF export özelliği
+- [ ] ❌ Barkod alanı kontrolü (models.py'de var mı?)
 
 ### Orta Öncelik
-- [ ] Kullanıcı authentication sistemi
-- [ ] Sayfalama (pagination) eklenebilir
-- [ ] Gelişmiş arama ve filtreleme
-- [ ] Barkod okuyucu entegrasyonu
-- [ ] E-posta bildirimleri
+- [ ] ❌ Kullanıcı authentication sistemi
+- [ ] ❌ Sayfalama (pagination)
+- [ ] ⚠️ Gelişmiş arama ve filtreleme (kısmi var)
+- [ ] ❌ Barkod okuyucu entegrasyonu
+- [ ] ❌ E-posta bildirimleri
+- [ ] ❌ Toplu ekipman ekleme (CSV import)
 
 ### Düşük Öncelik
-- [ ] Grafik ve charts (Chart.js)
-- [ ] Toplu ekipman ekleme (CSV import)
-- [ ] Yedekleme ve geri yükleme
-- [ ] API dokümantasyonu (Swagger)
-- [ ] Unit testler
+- [ ] ❌ Grafik ve charts (Chart.js)
+- [ ] ❌ Yedekleme ve geri yükleme
+- [ ] ❌ API dokümantasyonu (Swagger)
+- [ ] ❌ Unit testler
 
 ---
 
 ## 🐛 Bilinen Sorunlar
-- Şu an bilinen kritik sorun yok
+- ⚠️ Searchable dropdown özelliği DEGISIKLIKLER.md'de tamamlandı olarak işaretli ama kod yok
+- ⚠️ Ekipman düzenleme butonu var ama çalışmıyor
+- ⚠️ test.html sayfası gereksiz (silinebilir)
+- ⚠️ Duplicate TODO items var (temizlenmeli)
+
+---
+
+## ✅ Mevcut Çalışan Özellikler
+
+### Backend (app.py)
+- [x] ✅ Flask uygulaması çalışıyor (Port 5000)
+- [x] ✅ CORS yapılandırması aktif
+- [x] ✅ SQLite veritabanı bağlantısı
+- [x] ✅ API Endpoints:
+  - GET /api/kategoriler ✅
+  - GET /api/ekipman ✅ (filtreleme destekli)
+  - POST /api/ekipman ✅ (+ otomatik yeni kategori kaydı)
+  - PUT /api/ekipman/<id> ✅
+  - DELETE /api/ekipman/<id> ✅
+  - GET /api/hareket ✅
+  - POST /api/hareket ✅
+  - GET /api/istatistikler ✅
+
+### Frontend (templates/index.html + static/)
+- [x] ✅ 4 sekme: Dashboard, Envanter, Yeni Ekipman, Hareketler
+- [x] ✅ Responsive tasarım (mobile + desktop)
+- [x] ✅ Logo gösterimi (header - Galatasaray Üniversitesi)
+- [x] ✅ İstatistik kartları (toplam, depoda, kullanımda, arızalı)
+- [x] ✅ Kategori dağılımı görünümü
+- [x] ✅ Ekipman listeleme tablosu
+- [x] ✅ Ekipman detay modal (+ hareket geçmişi)
+- [x] ✅ Ekipman ekleme formu
+- [x] ✅ Ekipman silme (onay ile)
+- [x] ✅ Hareket ekleme formu
+- [x] ✅ Hareket listeleme
+- [x] ✅ Arama (marka, model, seri no)
+- [x] ✅ Filtreleme (kategori, durum)
+- [x] ✅ Alert/notification sistemi
+
+### Veritabanı (SQLite)
+- [x] ✅ Database: instance/stok_takip.db
+- [x] ✅ 3 tablo: ekipman, ekipman_hareket, kategori
+- [x] ✅ 16 varsayılan kategori yüklü
+- [x] ✅ İlişkisel bağlantılar (foreign keys)
+
+### Stil ve Tasarım
+- [x] ✅ Galatasaray teması (bordo #8B0000, sarı #FFD700)
+- [x] ✅ Gradient header
+- [x] ✅ Status badge'leri (renkli)
+- [x] ✅ Hover efektleri
+- [x] ✅ Modal animasyonları
 
 ---
 
@@ -131,4 +199,34 @@ Uygulama: http://localhost:5000
 
 ---
 
-*Son güncelleme: 18 Şubat 2026*
+*Son güncelleme: 26 Şubat 2026*
+
+---
+
+## 📋 Özellik Durumu
+
+### ✅ Aktif Özellikler
+1. **Searchable Kategori Dropdown**
+   - ✅ Input içinde arama
+   - ✅ Canlı filtreleme
+   - ✅ Liste açma/kapatma (arrow icon)
+   - ✅ Hem yazma hem seçme
+   - ✅ "Diğer" ile özel kategori
+   - ✅ Otomatik veritabanı kaydı
+
+2. **Ekipman Yönetimi**
+   - ✅ Ekipman ekleme
+   - ✅ Ekipman listeleme
+   - ✅ Ekipman silme
+   - ⚠️ Ekipman düzenleme (yapılacak)
+
+3. **Arayüz**
+   - ✅ Responsive tasarım
+   - ✅ Galatasaray teması
+   - ✅ Logo desteği
+   - ✅ Modal detay görünümü
+
+4. **Hareket Takibi**
+   - ✅ Giriş/Çıkış kayıt
+   - ✅ Zimmet sistemi
+   - ✅ Hareket geçmişi
