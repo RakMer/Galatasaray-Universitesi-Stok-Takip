@@ -26,7 +26,7 @@ function setupEventListeners() {
     // Tab Navigation
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const tabName = e.target.dataset.tab;
+            const tabName = e.target.dataset.tab; 
             switchTab(tabName);
         });
     });
