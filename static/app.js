@@ -34,6 +34,7 @@ function setupEventListeners() {
     // Forms
     document.getElementById('ekipman-form').addEventListener('submit', handleEkipmanSubmit);
     document.getElementById('hareket-form').addEventListener('submit', handleHareketSubmit);
+    document.getElementById('kategori-form').addEventListener('submit', handleKategoriSubmit);
 
     // Filters
     document.getElementById('search-input').addEventListener('input', filterEkipman);
@@ -68,6 +69,8 @@ function switchTab(tabName) {
         loadEkipmanlar();
     } else if (tabName === 'hareketler') {
         loadHareketler();
+    } else if (tabName === 'kategoriler') {
+        loadKategorilerTab();
     }
 }
 
@@ -446,9 +449,114 @@ async function showEkipmanDetail(id) {
     }
 }
 
-// Edit Ekipman (Simplified version - opens modal with edit form)
-function editEkipman(id) {
-    showAlert('Düzenleme özelliği yakında eklenecek!', 'info');
+// Edit Ekipman
+async function editEkipman(id) {
+    try {
+        const response = await fetch(`${API_URL}/ekipman/${id}`);
+        const ekipman = await response.json();
+
+        // Formu doldur
+        document.getElementById('edit-id').value = ekipman.id;
+        document.getElementById('edit-kategori').value = ekipman.kategori || '';
+        document.getElementById('edit-marka').value = ekipman.marka || '';
+        document.getElementById('edit-model').value = ekipman.model || '';
+        document.getElementById('edit-seri_no').value = ekipman.seri_no || '';
+        document.getElementById('edit-durum').value = ekipman.durum || 'Depoda';
+        document.getElementById('edit-tedarikci').value = ekipman.tedarikci || '';
+        document.getElementById('edit-notlar').value = ekipman.notlar || '';
+
+        // Temin tarihi formatla
+        if (ekipman.temin_tarihi) {
+            document.getElementById('edit-temin_tarihi').value = ekipman.temin_tarihi.split('T')[0];
+        } else {
+            document.getElementById('edit-temin_tarihi').value = '';
+        }
+        document.getElementById('edit-temin_fiyati').value = ekipman.temin_fiyati || '';
+
+        // Kategori dropdown kur
+        setupEditDropdown();
+
+        // Modalı aç
+        document.getElementById('edit-modal').style.display = 'block';
+    } catch (error) {
+        console.error('Ekipman bilgileri alınamadı:', error);
+        showAlert('Ekipman bilgileri alınamadı!', 'error');
+    }
+}
+
+// Edit Modal Dropdown
+function setupEditDropdown() {
+    const input = document.getElementById('edit-kategori');
+    const list = document.getElementById('edit-kategori-list');
+    if (!input || !list) return;
+
+    function populateList(filter = '') {
+        list.innerHTML = '';
+        const filtered = kategoriler.filter(kat =>
+            kat.ad.toLowerCase().includes(filter.toLowerCase())
+        );
+        filtered.forEach(kat => {
+            const div = document.createElement('div');
+            div.textContent = kat.ad;
+            div.onclick = () => {
+                input.value = kat.ad;
+                list.classList.remove('show');
+            };
+            list.appendChild(div);
+        });
+    }
+
+    input.addEventListener('focus', () => { populateList(input.value); list.classList.add('show'); });
+    input.addEventListener('input', () => { populateList(input.value); list.classList.add('show'); });
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#edit-modal .searchable-dropdown')) list.classList.remove('show');
+    });
+}
+
+// Close Edit Modal
+function closeEditModal() {
+    document.getElementById('edit-modal').style.display = 'none';
+    document.getElementById('edit-form').reset();
+}
+
+// Handle Edit Submit
+async function handleEditSubmit(e) {
+    e.preventDefault();
+
+    const id = document.getElementById('edit-id').value;
+    const formData = {
+        kategori: document.getElementById('edit-kategori').value,
+        marka: document.getElementById('edit-marka').value,
+        model: document.getElementById('edit-model').value,
+        seri_no: document.getElementById('edit-seri_no').value,
+        durum: document.getElementById('edit-durum').value,
+        temin_tarihi: document.getElementById('edit-temin_tarihi').value || null,
+        temin_fiyati: parseFloat(document.getElementById('edit-temin_fiyati').value) || null,
+        tedarikci: document.getElementById('edit-tedarikci').value,
+        notlar: document.getElementById('edit-notlar').value
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/ekipman/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showAlert('Ekipman başarıyla güncellendi!', 'success');
+            closeEditModal();
+            await loadEkipmanlar();
+            await loadIstatistikler();
+        } else {
+            showAlert('Hata: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Ekipman güncellenemedi:', error);
+        showAlert('Güncelleme sırasında hata oluştu!', 'error');
+    }
 }
 
 // Delete Ekipman
@@ -474,6 +582,103 @@ async function deleteEkipman(id) {
     } catch (error) {
         console.error('Ekipman silinemedi:', error);
         showAlert('Ekipman silinirken bir hata oluştu!', 'error');
+    }
+}
+
+// ---- KATEGORİ YÖNETİMİ ----
+
+// Kategoriler sekmesi yükle
+async function loadKategorilerTab() {
+    try {
+        const [katRes, ekpRes] = await Promise.all([
+            fetch(`${API_URL}/kategoriler`),
+            fetch(`${API_URL}/ekipman`)
+        ]);
+        const katList = await katRes.json();
+        const ekpList = await ekpRes.json();
+
+        // Her kategoride kaç ekipman var say
+        const sayac = {};
+        ekpList.forEach(e => {
+            sayac[e.kategori] = (sayac[e.kategori] || 0) + 1;
+        });
+
+        const tbody = document.getElementById('kategoriler-tbody');
+        if (!tbody) return;
+
+        if (katList.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="loading">Kategori bulunamadı.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = katList.map(kat => `
+            <tr>
+                <td>${kat.id}</td>
+                <td><strong>${kat.ad}</strong></td>
+                <td>${kat.aciklama || '-'}</td>
+                <td><span class="status-badge" style="background:#e9ecef;color:#333;">${sayac[kat.ad] || 0} adet</span></td>
+                <td>
+                    <button class="btn btn-danger btn-small" onclick="deleteKategori(${kat.id}, '${kat.ad}', ${sayac[kat.ad] || 0})">Sil</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error('Kategoriler yüklenemedi:', error);
+    }
+}
+
+// Yeni Kategori Ekle
+async function handleKategoriSubmit(e) {
+    e.preventDefault();
+    const ad = document.getElementById('yeni-kategori-ad').value.trim();
+    const aciklama = document.getElementById('yeni-kategori-aciklama').value.trim();
+
+    if (!ad) return;
+
+    try {
+        const response = await fetch(`${API_URL}/kategoriler`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ad, aciklama })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            showAlert(`"${ad}" kategorisi eklendi!`, 'success');
+            document.getElementById('kategori-form').reset();
+            await loadKategoriler();
+            populateKategoriSelects();
+            loadKategorilerTab();
+        } else {
+            showAlert('Hata: ' + result.error, 'error');
+        }
+    } catch (error) {
+        showAlert('Kategori eklenirken hata oluştu!', 'error');
+    }
+}
+
+// Kategori Sil
+async function deleteKategori(id, ad, ekipmanSayisi) {
+    if (ekipmanSayisi > 0) {
+        showAlert(`"${ad}" kategorisinde ${ekipmanSayisi} ekipman var. Önce ekipmanları başka kategoriye taşıyın.`, 'error');
+        return;
+    }
+    if (!confirm(`"${ad}" kategorisini silmek istediğinizden emin misiniz?`)) return;
+
+    try {
+        const response = await fetch(`${API_URL}/kategoriler/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+
+        if (result.success) {
+            showAlert(`"${ad}" kategorisi silindi!`, 'success');
+            await loadKategoriler();
+            populateKategoriSelects();
+            loadKategorilerTab();
+        } else {
+            showAlert('Hata: ' + result.error, 'error');
+        }
+    } catch (error) {
+        showAlert('Silme sırasında hata oluştu!', 'error');
     }
 }
 

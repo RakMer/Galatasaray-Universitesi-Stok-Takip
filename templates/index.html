@@ -25,6 +25,7 @@
             <button class="tab-btn" data-tab="ekipman">📦 Envanter Listesi</button>
             <button class="tab-btn" data-tab="ekle">➕ Yeni Ekipman</button>
             <button class="tab-btn" data-tab="hareketler">🔄 Hareketler</button>
+            <button class="tab-btn" data-tab="kategoriler">🏷️ Kategoriler</button>
         </div>
     </nav>
 
@@ -167,6 +168,45 @@
             </form>
         </section>
 
+        <!-- Kategoriler -->
+        <section id="kategoriler" class="tab-content">
+            <h3>Kategori Yönetimi</h3>
+
+            <!-- Yeni Kategori Ekle -->
+            <div class="hareket-form-container" style="margin-bottom: 2rem;">
+                <h4>Yeni Kategori Ekle</h4>
+                <form id="kategori-form" style="display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap;">
+                    <div class="form-group" style="flex:1; min-width:200px; margin:0;">
+                        <label for="yeni-kategori-ad">Kategori Adı *</label>
+                        <input type="text" id="yeni-kategori-ad" placeholder="Örn: Tablet, Projeksiyon..." required>
+                    </div>
+                    <div class="form-group" style="flex:2; min-width:250px; margin:0;">
+                        <label for="yeni-kategori-aciklama">Açıklama</label>
+                        <input type="text" id="yeni-kategori-aciklama" placeholder="Opsiyonel...">
+                    </div>
+                    <button type="submit" class="btn btn-primary">➕ Ekle</button>
+                </form>
+            </div>
+
+            <!-- Kategori Listesi -->
+            <div class="table-container">
+                <table id="kategoriler-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Kategori Adı</th>
+                            <th>Açıklama</th>
+                            <th>Ekipman Sayısı</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody id="kategoriler-tbody">
+                        <tr><td colspan="5" class="loading">Yükleniyor...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <!-- Hareketler -->
         <section id="hareketler" class="tab-content">
             <h3>Ekipman Hareketleri</h3>
@@ -256,12 +296,82 @@
         </section>
     </main>
 
-    <!-- Modal -->
+    <!-- Detay Modal -->
     <div id="modal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
             <h3 id="modal-title">Ekipman Detayı</h3>
             <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Düzenleme Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeEditModal()">&times;</span>
+            <h3>Ekipman Düzenle</h3>
+            <form id="edit-form" class="form-grid" onsubmit="handleEditSubmit(event)">
+                <input type="hidden" id="edit-id">
+
+                <div class="form-group">
+                    <label for="edit-kategori">Kategori *</label>
+                    <div class="searchable-dropdown">
+                        <input type="text" id="edit-kategori" placeholder="Kategori seçin..." autocomplete="off" required>
+                        <div class="dropdown-arrow">▼</div>
+                        <div class="dropdown-list" id="edit-kategori-list"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-marka">Marka</label>
+                    <input type="text" id="edit-marka" placeholder="Örn: Dell, HP">
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-model">Model</label>
+                    <input type="text" id="edit-model" placeholder="Model adı/numarası">
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-seri_no">Seri Numarası</label>
+                    <input type="text" id="edit-seri_no" placeholder="Seri numarası">
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-durum">Durum</label>
+                    <select id="edit-durum">
+                        <option value="Depoda">Depoda</option>
+                        <option value="Kullanımda">Kullanımda</option>
+                        <option value="Arızalı">Arızalı</option>
+                        <option value="Hurda">Hurda</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-temin_tarihi">Temin Tarihi</label>
+                    <input type="date" id="edit-temin_tarihi">
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-temin_fiyati">Temin Fiyatı (₺)</label>
+                    <input type="number" id="edit-temin_fiyati" step="0.01" placeholder="0.00">
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="edit-tedarikci">Tedarikçi</label>
+                    <input type="text" id="edit-tedarikci">
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="edit-notlar">Notlar</label>
+                    <textarea id="edit-notlar" rows="3"></textarea>
+                </div>
+
+                <div class="form-actions full-width">
+                    <button type="submit" class="btn btn-primary">💾 Kaydet</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">İptal</button>
+                </div>
+            </form>
         </div>
     </div>
 

@@ -34,6 +34,26 @@ def get_kategoriler():
     kategoriler = Kategori.query.all()
     return jsonify([k.to_dict() for k in kategoriler])
 
+@app.route('/api/kategoriler', methods=['POST'])
+def add_kategori():
+    """Yeni kategori ekle"""
+    data = request.json
+    try:
+        ad = data.get('ad', '').strip()
+        if not ad:
+            return jsonify({'success': False, 'error': 'Kategori adı boş olamaz.'}), 400
+        
+        if Kategori.query.filter_by(ad=ad).first():
+            return jsonify({'success': False, 'error': f'"{ad}" kategorisi zaten mevcut.'}), 400
+        
+        kategori = Kategori(ad=ad, aciklama=data.get('aciklama', ''))
+        db.session.add(kategori)
+        db.session.commit()
+        return jsonify({'success': True, 'data': kategori.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+
 @app.route('/api/kategoriler/<int:id>', methods=['DELETE'])
 def delete_kategori(id):
     """Kategori sil"""
