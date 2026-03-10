@@ -5,6 +5,7 @@ const API_URL = '/api';
 let kategoriler = [];
 let ekipmanlar = [];
 let hareketler = [];
+let currentUser = null;
 
 // DOM Ready
 document.addEventListener('DOMContentLoaded', () => {
@@ -14,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Initialize App
 async function initApp() {
+    await loadCurrentUser();
     await loadKategoriler();
     populateKategoriSelects();
     await loadIstatistikler();
@@ -46,6 +48,47 @@ function setupEventListeners() {
     window.addEventListener('click', (e) => {
         if (e.target.id === 'modal') closeModal();
     });
+
+    // Select All Checkbox
+    const selectAll = document.getElementById('select-all');
+    if (selectAll) {
+        selectAll.addEventListener('change', (e) => {
+            document.querySelectorAll('.ekipman-checkbox').forEach(cb => {
+                cb.checked = e.target.checked;
+            });
+            updateBulkBar();
+        });
+    }
+
+    // Advanced Filter Toggle
+    const toggleBtn = document.getElementById('toggle-advanced-filter');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            const panel = document.getElementById('advanced-filters');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            toggleBtn.classList.toggle('active');
+        });
+    }
+
+    // Advanced filter inputs - trigger on Enter
+    ['tedarikci-filter', 'fiyat-min-filter', 'fiyat-max-filter', 'tarih-min-filter', 'tarih-max-filter'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', filterEkipman);
+    });
+
+    // Sortable column headers
+    document.querySelectorAll('.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.dataset.sort;
+            if (currentSort.column === col) {
+                currentSort.asc = !currentSort.asc;
+            } else {
+                currentSort.column = col;
+                currentSort.asc = true;
+            }
+            displayEkipmanlar();
+        });
+    });
 }
 
 // Tab Switching
@@ -71,6 +114,8 @@ function switchTab(tabName) {
         loadHareketler();
     } else if (tabName === 'kategoriler') {
         loadKategorilerTab();
+    } else if (tabName === 'kullanicilar') {
+        loadKullanicilar();
     }
 }
 
@@ -259,6 +304,9 @@ function setupSearchableDropdown() {
 }
 
 // Load İstatistikler
+let chartDurum = null;
+let chartKategori = null;
+
 async function loadIstatistikler() {
     try {
         const response = await fetch(`${API_URL}/istatistikler`);
@@ -269,7 +317,7 @@ async function loadIstatistikler() {
         document.getElementById('stat-kullanimda').textContent = data.kullanimda;
         document.getElementById('stat-arizali').textContent = data.arizali;
 
-        // Kategori dağılımı
+        // Kategori dağılımı liste
         const dagilimDiv = document.getElementById('kategori-dagilim');
         dagilimDiv.innerHTML = '';
 
@@ -282,8 +330,114 @@ async function loadIstatistikler() {
             `;
             dagilimDiv.appendChild(item);
         });
+
+        // --- CHART.JS GRAFİKLER ---
+        renderCharts(data);
     } catch (error) {
         console.error('İstatistikler yüklenemedi:', error);
+    }
+}
+
+function renderCharts(data) {
+    // Durum Dağılımı - Doughnut
+    const durumCtx = document.getElementById('chart-durum');
+    if (durumCtx) {
+        if (chartDurum) chartDurum.destroy();
+
+        const durumLabels = ['Depoda', 'Kullanımda', 'Arızalı'];
+        const durumValues = [data.depodaki, data.kullanimda, data.arizali];
+        const hurda = data.toplam_ekipman - data.depodaki - data.kullanimda - data.arizali;
+        if (hurda > 0) {
+            durumLabels.push('Hurda');
+            durumValues.push(hurda);
+        }
+
+        chartDurum = new Chart(durumCtx, {
+            type: 'doughnut',
+            data: {
+                labels: durumLabels,
+                datasets: [{
+                    data: durumValues,
+                    backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#9ca3af'],
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 16,
+                            usePointStyle: true,
+                            pointStyleWidth: 12,
+                            font: { family: 'Inter', size: 12 }
+                        }
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+    }
+
+    // Kategori Dağılımı - Bar
+    const katCtx = document.getElementById('chart-kategori');
+    if (katCtx) {
+        if (chartKategori) chartKategori.destroy();
+
+        const entries = Object.entries(data.kategori_dagilim).sort((a, b) => b[1] - a[1]);
+        const katLabels = entries.map(e => e[0]);
+        const katValues = entries.map(e => e[1]);
+
+        // Renk paleti
+        const palette = [
+            '#8B0000', '#B22222', '#DC143C', '#E74C3C', '#FF6B6B',
+            '#FFD700', '#FFA500', '#FF8C00', '#3b82f6', '#10b981',
+            '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1',
+            '#84cc16'
+        ];
+        const bgColors = katLabels.map((_, i) => palette[i % palette.length]);
+
+        chartKategori = new Chart(katCtx, {
+            type: 'bar',
+            data: {
+                labels: katLabels,
+                datasets: [{
+                    label: 'Ekipman Sayısı',
+                    data: katValues,
+                    backgroundColor: bgColors.map(c => c + 'CC'),
+                    borderColor: bgColors,
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    barPercentage: 0.7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: katLabels.length > 8 ? 'y' : 'x',
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { family: 'Inter', size: 11 } }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            font: { family: 'Inter', size: 11 }
+                        },
+                        grid: { color: 'rgba(0,0,0,0.04)' }
+                    }
+                }
+            }
+        });
     }
 }
 
@@ -300,17 +454,60 @@ async function loadEkipmanlar(filters = {}) {
     }
 }
 
+// Sort Header Icons
+function updateSortHeaders() {
+    document.querySelectorAll('.sortable').forEach(th => {
+        const icon = th.querySelector('.sort-icon');
+        if (!icon) return;
+        if (th.dataset.sort === currentSort.column) {
+            icon.textContent = currentSort.asc ? ' ▲' : ' ▼';
+            th.classList.add('sorted');
+        } else {
+            icon.textContent = '';
+            th.classList.remove('sorted');
+        }
+    });
+}
+
 // Display Ekipmanlar
+let currentSort = { column: null, asc: true };
+
 function displayEkipmanlar() {
     const tbody = document.getElementById('ekipman-tbody');
     
     if (ekipmanlar.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="loading">Ekipman bulunamadı.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="loading">Ekipman bulunamadı.</td></tr>';
+        updateSortHeaders();
         return;
     }
 
-    tbody.innerHTML = ekipmanlar.map(ekipman => `
+    // Reset select-all
+    const selectAll = document.getElementById('select-all');
+    if (selectAll) selectAll.checked = false;
+    updateBulkBar();
+
+    // Sıralama uygula
+    let sorted = [...ekipmanlar];
+    if (currentSort.column) {
+        sorted.sort((a, b) => {
+            let valA = a[currentSort.column] || '';
+            let valB = b[currentSort.column] || '';
+            if (typeof valA === 'number' && typeof valB === 'number') {
+                return currentSort.asc ? valA - valB : valB - valA;
+            }
+            valA = String(valA).toLowerCase();
+            valB = String(valB).toLowerCase();
+            if (valA < valB) return currentSort.asc ? -1 : 1;
+            if (valA > valB) return currentSort.asc ? 1 : -1;
+            return 0;
+        });
+    }
+
+    updateSortHeaders();
+
+    tbody.innerHTML = sorted.map(ekipman => `
         <tr>
+            <td><input type="checkbox" class="ekipman-checkbox" value="${ekipman.id}" onchange="updateBulkBar()"></td>
             <td>${ekipman.id}</td>
             <td>${ekipman.kategori}</td>
             <td>${ekipman.marka || '-'}</td>
@@ -337,7 +534,33 @@ function filterEkipman() {
     if (kategori) filters.kategori = kategori;
     if (durum) filters.durum = durum;
 
+    // Gelişmiş filtreler
+    const tedarikci = document.getElementById('tedarikci-filter');
+    const fiyatMin = document.getElementById('fiyat-min-filter');
+    const fiyatMax = document.getElementById('fiyat-max-filter');
+    const tarihMin = document.getElementById('tarih-min-filter');
+    const tarihMax = document.getElementById('tarih-max-filter');
+
+    if (tedarikci && tedarikci.value) filters.tedarikci = tedarikci.value;
+    if (fiyatMin && fiyatMin.value) filters.fiyat_min = fiyatMin.value;
+    if (fiyatMax && fiyatMax.value) filters.fiyat_max = fiyatMax.value;
+    if (tarihMin && tarihMin.value) filters.tarih_min = tarihMin.value;
+    if (tarihMax && tarihMax.value) filters.tarih_max = tarihMax.value;
+
     loadEkipmanlar(filters);
+}
+
+// Clear all filters
+function clearFilters() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('kategori-filter').value = '';
+    document.getElementById('durum-filter').value = '';
+    const ids = ['tedarikci-filter', 'fiyat-min-filter', 'fiyat-max-filter', 'tarih-min-filter', 'tarih-max-filter'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    loadEkipmanlar();
 }
 
 // Handle Ekipman Submit
@@ -698,7 +921,7 @@ function displayHareketler() {
     const tbody = document.getElementById('hareketler-tbody');
     
     if (hareketler.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="loading">Hareket kaydı bulunamadı.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">Hareket kaydı bulunamadı.</td></tr>';
         return;
     }
 
@@ -710,6 +933,7 @@ function displayHareketler() {
             <td>${hareket.kullanici_adi || '-'}</td>
             <td>${hareket.birim || '-'}</td>
             <td>${hareket.lokasyon || '-'}</td>
+            <td><a href="/api/zimmet-belgesi/${hareket.id}" class="btn btn-primary btn-small" title="Zimmet belgesi indir">📄 Zimmet</a></td>
         </tr>
     `).join('');
 }
@@ -773,4 +997,246 @@ function showAlert(message, type = 'info') {
     setTimeout(() => {
         alertDiv.remove();
     }, 5000);
+}
+
+// ---- TOPLU İŞLEM FONKSİYONLARI ----
+
+// Seçili ekipman ID'lerini al
+function getSelectedIds() {
+    return Array.from(document.querySelectorAll('.ekipman-checkbox:checked')).map(cb => parseInt(cb.value));
+}
+
+// Toplu işlem barını güncelle
+function updateBulkBar() {
+    const selected = getSelectedIds();
+    const bar = document.getElementById('bulk-action-bar');
+    const countEl = document.getElementById('bulk-count');
+    if (!bar) return;
+
+    if (selected.length > 0) {
+        bar.style.display = 'flex';
+        countEl.textContent = `${selected.length} ekipman seçildi`;
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
+// Seçimi temizle
+function clearSelection() {
+    document.querySelectorAll('.ekipman-checkbox').forEach(cb => cb.checked = false);
+    const selectAll = document.getElementById('select-all');
+    if (selectAll) selectAll.checked = false;
+    updateBulkBar();
+}
+
+// Toplu durum güncelleme
+async function bulkUpdateDurum() {
+    const ids = getSelectedIds();
+    const durum = document.getElementById('bulk-durum-select').value;
+
+    if (ids.length === 0) {
+        showAlert('Lütfen en az bir ekipman seçin.', 'error');
+        return;
+    }
+    if (!durum) {
+        showAlert('Lütfen bir durum seçin.', 'error');
+        return;
+    }
+    if (!confirm(`${ids.length} ekipmanın durumu "${durum}" olarak güncellenecek. Onaylıyor musunuz?`)) return;
+
+    try {
+        const response = await fetch(`${API_URL}/ekipman/toplu-durum`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, durum })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            showAlert(result.message, 'success');
+            clearSelection();
+            await loadEkipmanlar();
+            await loadIstatistikler();
+        } else {
+            showAlert('Hata: ' + result.error, 'error');
+        }
+    } catch (error) {
+        showAlert('Toplu güncelleme sırasında hata oluştu!', 'error');
+    }
+}
+
+// Toplu silme
+async function bulkDelete() {
+    const ids = getSelectedIds();
+
+    if (ids.length === 0) {
+        showAlert('Lütfen en az bir ekipman seçin.', 'error');
+        return;
+    }
+    if (!confirm(`${ids.length} ekipman kalıcı olarak silinecek! Bu işlem geri alınamaz. Onaylıyor musunuz?`)) return;
+
+    try {
+        const response = await fetch(`${API_URL}/ekipman/toplu-sil`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            showAlert(result.message, 'success');
+            clearSelection();
+            await loadEkipmanlar();
+            await loadIstatistikler();
+        } else {
+            showAlert('Hata: ' + result.error, 'error');
+        }
+    } catch (error) {
+        showAlert('Toplu silme sırasında hata oluştu!', 'error');
+    }
+}
+
+// ===== KULLANICI YÖNETİMİ =====
+
+async function loadCurrentUser() {
+    try {
+        const response = await fetch(`${API_URL}/kullanici/bilgi`);
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
+        const data = await response.json();
+        if (data.success) {
+            currentUser = data.user;
+            document.getElementById('user-name').textContent = currentUser.ad_soyad || currentUser.username;
+            
+            // Admin ise Kullanıcılar tabını göster
+            if (currentUser.rol === 'admin') {
+                const tabBtn = document.getElementById('tab-kullanicilar');
+                if (tabBtn) tabBtn.style.display = '';
+            }
+        }
+    } catch (error) {
+        console.error('Kullanıcı bilgisi yüklenemedi:', error);
+    }
+}
+
+function sifreDegistirModal() {
+    document.getElementById('sifre-modal').style.display = 'flex';
+    document.getElementById('eski-sifre').value = '';
+    document.getElementById('yeni-sifre').value = '';
+    document.getElementById('yeni-sifre-tekrar').value = '';
+}
+
+function closeSifreModal() {
+    document.getElementById('sifre-modal').style.display = 'none';
+}
+
+async function handleSifreDegistir(e) {
+    e.preventDefault();
+    const eskiSifre = document.getElementById('eski-sifre').value;
+    const yeniSifre = document.getElementById('yeni-sifre').value;
+    const yeniSifreTekrar = document.getElementById('yeni-sifre-tekrar').value;
+
+    if (yeniSifre !== yeniSifreTekrar) {
+        showAlert('Yeni şifreler eşleşmiyor!', 'error');
+        return;
+    }
+    if (yeniSifre.length < 4) {
+        showAlert('Yeni şifre en az 4 karakter olmalı!', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/sifre-degistir`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ eski_sifre: eskiSifre, yeni_sifre: yeniSifre })
+        });
+        const result = await response.json();
+        if (result.success) {
+            showAlert('Şifre başarıyla değiştirildi!', 'success');
+            closeSifreModal();
+        } else {
+            showAlert('Hata: ' + result.error, 'error');
+        }
+    } catch (error) {
+        showAlert('Şifre değiştirme sırasında hata oluştu!', 'error');
+    }
+}
+
+async function loadKullanicilar() {
+    try {
+        const response = await fetch(`${API_URL}/kullanicilar`);
+        const users = await response.json();
+        const tbody = document.getElementById('kullanicilar-tbody');
+        if (!tbody) return;
+
+        if (users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Kullanıcı bulunamadı</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = users.map(u => `
+            <tr>
+                <td>${u.id}</td>
+                <td><strong>${u.username}</strong></td>
+                <td>${u.ad_soyad || '-'}</td>
+                <td><span class="badge badge-${u.rol === 'admin' ? 'warning' : 'info'}">${u.rol === 'admin' ? '👑 Admin' : '👤 Kullanıcı'}</span></td>
+                <td><span class="badge badge-${u.aktif ? 'success' : 'danger'}">${u.aktif ? 'Aktif' : 'Pasif'}</span></td>
+                <td>${u.olusturma_tarihi ? new Date(u.olusturma_tarihi).toLocaleDateString('tr-TR') : '-'}</td>
+                <td>
+                    ${u.id !== currentUser.id ? `<button class="btn btn-danger btn-sm" onclick="deleteKullanici(${u.id}, '${u.username}')">🗑️ Sil</button>` : '<span style="color:#999">—</span>'}
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error('Kullanıcılar yüklenemedi:', error);
+    }
+}
+
+async function handleKullaniciEkle(e) {
+    e.preventDefault();
+    const username = document.getElementById('yeni-kul-username').value.trim();
+    const ad_soyad = document.getElementById('yeni-kul-adsoyad').value.trim();
+    const password = document.getElementById('yeni-kul-sifre').value;
+    const rol = document.getElementById('yeni-kul-rol').value;
+
+    try {
+        const response = await fetch(`${API_URL}/kullanicilar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, ad_soyad, password, rol })
+        });
+        const result = await response.json();
+        if (result.success) {
+            showAlert(`${username} kullanıcısı eklendi!`, 'success');
+            document.getElementById('yeni-kul-username').value = '';
+            document.getElementById('yeni-kul-adsoyad').value = '';
+            document.getElementById('yeni-kul-sifre').value = '';
+            document.getElementById('yeni-kul-rol').value = 'kullanici';
+            await loadKullanicilar();
+        } else {
+            showAlert('Hata: ' + result.error, 'error');
+        }
+    } catch (error) {
+        showAlert('Kullanıcı ekleme sırasında hata oluştu!', 'error');
+    }
+}
+
+async function deleteKullanici(id, username) {
+    if (!confirm(`"${username}" kullanıcısını silmek istediğinize emin misiniz?`)) return;
+
+    try {
+        const response = await fetch(`${API_URL}/kullanicilar/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (result.success) {
+            showAlert(result.message, 'success');
+            await loadKullanicilar();
+        } else {
+            showAlert('Hata: ' + result.error, 'error');
+        }
+    } catch (error) {
+        showAlert('Kullanıcı silme sırasında hata oluştu!', 'error');
+    }
 }

@@ -1,7 +1,39 @@
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
+
+
+class User(UserMixin, db.Model):
+    """Kullanıcı tablosu"""
+    __tablename__ = 'user'
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
+    ad_soyad = db.Column(db.String(200))
+    rol = db.Column(db.String(20), default='kullanici')  # admin, kullanici
+    aktif = db.Column(db.Boolean, default=True)
+    olusturma_tarihi = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'username': self.username,
+            'ad_soyad': self.ad_soyad,
+            'rol': self.rol,
+            'aktif': self.aktif,
+            'olusturma_tarihi': self.olusturma_tarihi.isoformat() if self.olusturma_tarihi else None
+        }
+
 
 class Ekipman(db.Model):
     """Ekipman/Envanter tablosu"""

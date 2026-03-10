@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <header>
@@ -17,6 +18,11 @@
                 <div class="header-text">
                     <h1>Galatasaray Üniversitesi</h1>
                     <h2>Bilgi İşlem Stok Takip Sistemi</h2>
+                </div>
+                <div class="user-menu">
+                    <span class="user-info" id="user-display">👤 <span id="user-name">Yükleniyor...</span></span>
+                    <button class="btn-sifre" onclick="sifreDegistirModal()" title="Şifre Değiştir">🔑</button>
+                    <a href="/logout" class="btn-logout" title="Çıkış Yap">🚪 Çıkış</a>
                 </div>
             </div>
         </div>
@@ -29,6 +35,7 @@
             <button class="tab-btn" data-tab="ekle">➕ Yeni Ekipman</button>
             <button class="tab-btn" data-tab="hareketler">🔄 Hareketler</button>
             <button class="tab-btn" data-tab="kategoriler">🏷️ Kategoriler</button>
+            <button class="tab-btn" data-tab="kullanicilar" id="tab-kullanicilar" style="display:none;">👥 Kullanıcılar</button>
         </div>
     </nav>
 
@@ -55,7 +62,18 @@
                 </div>
             </div>
 
-            <h3>Kategori Dağılımı</h3>
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Durum Dağılımı</h3>
+                    <canvas id="chart-durum"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Kategori Dağılımı</h3>
+                    <canvas id="chart-kategori"></canvas>
+                </div>
+            </div>
+
+            <h3>Kategori Detayı</h3>
             <div id="kategori-dagilim" class="kategori-list"></div>
         </section>
 
@@ -77,24 +95,70 @@
                 </select>
                 <a href="/api/export/excel" class="btn btn-success btn-export" title="Excel olarak indir">📥 Excel</a>
                 <a href="/api/export/pdf" class="btn btn-danger btn-export" title="PDF olarak indir">📄 PDF</a>
+                <button type="button" class="btn btn-secondary btn-small" id="toggle-advanced-filter">⚙️ Gelişmiş Filtre</button>
+            </div>
+
+            <div id="advanced-filters" class="advanced-filters" style="display:none;">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label>Tedarikçi</label>
+                        <input type="text" id="tedarikci-filter" placeholder="Tedarikçi ara...">
+                    </div>
+                    <div class="filter-group">
+                        <label>Min Fiyat (₺)</label>
+                        <input type="number" id="fiyat-min-filter" placeholder="0" step="0.01">
+                    </div>
+                    <div class="filter-group">
+                        <label>Max Fiyat (₺)</label>
+                        <input type="number" id="fiyat-max-filter" placeholder="∞" step="0.01">
+                    </div>
+                    <div class="filter-group">
+                        <label>Tarih Başlangıç</label>
+                        <input type="date" id="tarih-min-filter">
+                    </div>
+                    <div class="filter-group">
+                        <label>Tarih Bitiş</label>
+                        <input type="date" id="tarih-max-filter">
+                    </div>
+                    <div class="filter-group filter-actions">
+                        <button class="btn btn-primary btn-small" onclick="filterEkipman()">Filtrele</button>
+                        <button class="btn btn-secondary btn-small" onclick="clearFilters()">Temizle</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toplu İşlem Barı -->
+            <div id="bulk-action-bar" class="bulk-action-bar" style="display:none;">
+                <span id="bulk-count">0 ekipman seçildi</span>
+                <select id="bulk-durum-select">
+                    <option value="">Durum Seç...</option>
+                    <option value="Depoda">Depoda</option>
+                    <option value="Kullanımda">Kullanımda</option>
+                    <option value="Arızalı">Arızalı</option>
+                    <option value="Hurda">Hurda</option>
+                </select>
+                <button class="btn btn-primary btn-small" onclick="bulkUpdateDurum()">Durumu Güncelle</button>
+                <button class="btn btn-danger btn-small" onclick="bulkDelete()">🗑 Seçilenleri Sil</button>
+                <button class="btn btn-secondary btn-small" onclick="clearSelection()">✕ İptal</button>
             </div>
 
             <div class="table-container">
                 <table id="ekipman-table">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Kategori</th>
-                            <th>Marka</th>
-                            <th>Model</th>
-                            <th>Seri No</th>
-                            <th>Durum</th>
+                            <th style="width:40px;"><input type="checkbox" id="select-all" title="Tümünü Seç"></th>
+                            <th class="sortable" data-sort="id">ID <span class="sort-icon"></span></th>
+                            <th class="sortable" data-sort="kategori">Kategori <span class="sort-icon"></span></th>
+                            <th class="sortable" data-sort="marka">Marka <span class="sort-icon"></span></th>
+                            <th class="sortable" data-sort="model">Model <span class="sort-icon"></span></th>
+                            <th class="sortable" data-sort="seri_no">Seri No <span class="sort-icon"></span></th>
+                            <th class="sortable" data-sort="durum">Durum <span class="sort-icon"></span></th>
                             <th>İşlemler</th>
                         </tr>
                     </thead>
                     <tbody id="ekipman-tbody">
                         <tr>
-                            <td colspan="7" class="loading">Yükleniyor...</td>
+                            <td colspan="8" class="loading">Yükleniyor...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -289,15 +353,65 @@
                             <th>Kullanıcı</th>
                             <th>Birim</th>
                             <th>Lokasyon</th>
+                            <th>İşlemler</th>
                         </tr>
                     </thead>
                     <tbody id="hareketler-tbody">
                         <tr>
-                            <td colspan="6" class="loading">Yükleniyor...</td>
+                            <td colspan="7" class="loading">Yükleniyor...</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
+        </section>
+
+        <!-- Kullanıcı Yönetimi Sekmesi -->
+        <section id="kullanicilar" class="tab-content">
+            <h3>👥 Kullanıcı Yönetimi</h3>
+            
+            <div class="card" style="margin-bottom:24px;">
+                <h4 style="margin-bottom:16px;">➕ Yeni Kullanıcı Ekle</h4>
+                <form onsubmit="handleKullaniciEkle(event)" class="form-grid" style="grid-template-columns: repeat(4, 1fr);">
+                    <div class="form-group">
+                        <label for="yeni-kul-username">Kullanıcı Adı</label>
+                        <input type="text" id="yeni-kul-username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="yeni-kul-adsoyad">Ad Soyad</label>
+                        <input type="text" id="yeni-kul-adsoyad">
+                    </div>
+                    <div class="form-group">
+                        <label for="yeni-kul-sifre">Şifre</label>
+                        <input type="password" id="yeni-kul-sifre" required minlength="4">
+                    </div>
+                    <div class="form-group">
+                        <label for="yeni-kul-rol">Rol</label>
+                        <select id="yeni-kul-rol">
+                            <option value="kullanici">Kullanıcı</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="align-self:end;">
+                        <button type="submit" class="btn btn-primary" style="width:100%;">➕ Ekle</button>
+                    </div>
+                </form>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Kullanıcı Adı</th>
+                        <th>Ad Soyad</th>
+                        <th>Rol</th>
+                        <th>Durum</th>
+                        <th>Kayıt Tarihi</th>
+                        <th>İşlem</th>
+                    </tr>
+                </thead>
+                <tbody id="kullanicilar-tbody">
+                </tbody>
+            </table>
         </section>
     </main>
 
@@ -380,12 +494,40 @@
         </div>
     </div>
 
+    <!-- Şifre Değiştirme Modalı -->
+    <div class="modal-overlay" id="sifre-modal" style="display:none;">
+        <div class="modal-content" style="max-width:400px;">
+            <div class="modal-header">
+                <h3>🔑 Şifre Değiştir</h3>
+                <button class="modal-close" onclick="closeSifreModal()">&times;</button>
+            </div>
+            <form onsubmit="handleSifreDegistir(event)">
+                <div class="form-group">
+                    <label for="eski-sifre">Mevcut Şifre</label>
+                    <input type="password" id="eski-sifre" required>
+                </div>
+                <div class="form-group">
+                    <label for="yeni-sifre">Yeni Şifre</label>
+                    <input type="password" id="yeni-sifre" required minlength="4">
+                </div>
+                <div class="form-group">
+                    <label for="yeni-sifre-tekrar">Yeni Şifre (Tekrar)</label>
+                    <input type="password" id="yeni-sifre-tekrar" required minlength="4">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">💾 Değiştir</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeSifreModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <footer>
         <div class="container">
             <p>&copy; 2026 Galatasaray Üniversitesi - Bilgi İşlem Departmanı</p>
         </div>
     </footer>
 
-    <script src="{{ url_for('static', filename='app.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v=3"></script>
 </body>
 </html>
