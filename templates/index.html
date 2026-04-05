@@ -34,6 +34,7 @@
             <button class="tab-btn" data-tab="ekipman">📦 Envanter Listesi</button>
             <button class="tab-btn" data-tab="ekle">➕ Yeni Ekipman</button>
             <button class="tab-btn" data-tab="hareketler">🔄 Hareketler</button>
+            <button class="tab-btn" data-tab="depolar">🏬 Depo Yönetimi</button>
             <button class="tab-btn" data-tab="kategoriler">🏷️ Kategoriler</button>
             <button class="tab-btn" data-tab="kullanicilar" id="tab-kullanicilar" style="display:none;">👥 Kullanıcılar</button>
         </div>
@@ -92,6 +93,9 @@
                     <option value="Kullanımda">Kullanımda</option>
                     <option value="Arızalı">Arızalı</option>
                     <option value="Hurda">Hurda</option>
+                </select>
+                <select id="depo-filter">
+                    <option value="">Tüm Depolar</option>
                 </select>
                 <a href="/api/export/excel" class="btn btn-success btn-export" title="Excel olarak indir">📥 Excel</a>
                 <a href="/api/export/pdf" class="btn btn-danger btn-export" title="PDF olarak indir">📄 PDF</a>
@@ -207,6 +211,13 @@
                         <option value="Kullanımda">Kullanımda</option>
                         <option value="Arızalı">Arızalı</option>
                         <option value="Hurda">Hurda</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="depo_id">Depo</label>
+                    <select id="depo_id">
+                        <option value="">Depo Seçiniz...</option>
                     </select>
                 </div>
 
@@ -365,6 +376,85 @@
             </div>
         </section>
 
+        <section id="depolar" class="tab-content">
+            <h3>Depo Yönetimi</h3>
+
+            <div style="display:flex; justify-content:flex-end; margin-bottom: 1rem;">
+                <button type="button" class="btn btn-secondary" id="toggle-depo-form">➕ Yeni Depo Ekle</button>
+            </div>
+
+            <div class="hareket-form-container" id="depo-form-container" style="margin-bottom: 2rem; display:none;">
+                <h4>Yeni Depo Ekle</h4>
+                <form id="depo-form" class="form-grid">
+                    <div class="form-group">
+                        <label for="depo-ad">Depo Adı *</label>
+                        <input type="text" id="depo-ad" placeholder="Örn: Ana Depo" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="depo-lokasyon">Lokasyon</label>
+                        <input type="text" id="depo-lokasyon" placeholder="Örn: A Blok Zemin Kat">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="depo-aciklama">Açıklama</label>
+                        <input type="text" id="depo-aciklama" placeholder="Oüpsiyonel açıklama">
+                    </div>
+                    <div class="form-actions full-width">
+                        <button type="submit" class="btn btn-primary">➕ Depo Ekle</button>
+                        <button type="button" class="btn btn-secondary" id="close-depo-form">Kapat</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="hareket-form-container" style="margin-bottom: 2rem;">
+                <h4>Depolar Arası Malzeme Taşıma</h4>
+                <form id="depo-transfer-form" class="form-grid">
+                    <div class="form-group">
+                        <label for="transfer-ekipman-id">Ekipman ID *</label>
+                        <input type="number" id="transfer-ekipman-id" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="transfer-kaynak-depo">Kaynak Depo</label>
+                        <select id="transfer-kaynak-depo">
+                            <option value="">(Opsiyonel) Kaynak Depo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="transfer-hedef-depo">Hedef Depo *</label>
+                        <select id="transfer-hedef-depo" required>
+                            <option value="">Hedef Depo Seçiniz...</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="transfer-aciklama">Açıklama</label>
+                        <textarea id="transfer-aciklama" rows="2" placeholder="Transfer notu..."></textarea>
+                    </div>
+                    <div class="form-actions full-width">
+                        <button type="submit" class="btn btn-primary">🔄 Transfer Yap</button>
+                    </div>
+                </form>
+            </div>
+
+            <h4>Depo Listesi</h4>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Depo Adı</th>
+                            <th>Lokasyon</th>
+                            <th>Ekipman Sayısı</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="depolar-tbody">
+                        <tr><td colspan="5" class="loading">Yükleniyor...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        
+
         <!-- Kullanıcı Yönetimi Sekmesi -->
         <section id="kullanicilar" class="tab-content">
             <h3>👥 Kullanıcı Yönetimi</h3>
@@ -467,6 +557,13 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="edit-depo_id">Depo</label>
+                    <select id="edit-depo_id">
+                        <option value="">Depo Seçiniz...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label for="edit-temin_tarihi">Temin Tarihi</label>
                     <input type="date" id="edit-temin_tarihi">
                 </div>
@@ -528,6 +625,6 @@
         </div>
     </footer>
 
-    <script src="{{ url_for('static', filename='app.js') }}?v=3"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v=4"></script>
 </body>
 </html>

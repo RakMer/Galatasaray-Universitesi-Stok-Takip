@@ -50,11 +50,13 @@ class Ekipman(db.Model):
     temin_tarihi = db.Column(db.DateTime)
     temin_fiyati = db.Column(db.Float)
     tedarikci = db.Column(db.String(200))
+    depo_id = db.Column(db.Integer, db.ForeignKey('depo.id'))
     olusturma_tarihi = db.Column(db.DateTime, default=datetime.utcnow)
     guncelleme_tarihi = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # İlişkiler
     hareketler = db.relationship('EkipmanHareket', backref='ekipman', lazy=True, cascade='all, delete-orphan')
+    depo = db.relationship('Depo', backref='ekipmanlar', lazy=True)
     
     def to_dict(self):
         return {
@@ -69,8 +71,32 @@ class Ekipman(db.Model):
             'temin_tarihi': self.temin_tarihi.isoformat() if self.temin_tarihi else None,
             'temin_fiyati': self.temin_fiyati,
             'tedarikci': self.tedarikci,
+            'depo_id': self.depo_id,
+            'depo_adi': self.depo.ad if self.depo else None,
             'olusturma_tarihi': self.olusturma_tarihi.isoformat() if self.olusturma_tarihi else None,
             'guncelleme_tarihi': self.guncelleme_tarihi.isoformat() if self.guncelleme_tarihi else None
+        }
+
+
+class Depo(db.Model):
+    """Depo tablosu"""
+    __tablename__ = 'depo'
+
+    id = db.Column(db.Integer, primary_key=True)
+    ad = db.Column(db.String(120), unique=True, nullable=False)
+    lokasyon = db.Column(db.String(200))
+    aciklama = db.Column(db.Text)
+    aktif = db.Column(db.Boolean, default=True)
+    olusturma_tarihi = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'ad': self.ad,
+            'lokasyon': self.lokasyon,
+            'aciklama': self.aciklama,
+            'aktif': self.aktif,
+            'olusturma_tarihi': self.olusturma_tarihi.isoformat() if self.olusturma_tarihi else None
         }
 
 

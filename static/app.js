@@ -5,6 +5,7 @@ const API_URL = '/api';
 let kategoriler = [];
 let ekipmanlar = [];
 let hareketler = [];
+let depolar = [];
 let currentUser = null;
 
 // DOM Ready
@@ -16,8 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // Initialize App
 async function initApp() {
     await loadCurrentUser();
+    await loadDepolar();
     await loadKategoriler();
     populateKategoriSelects();
+    populateDepoSelects();
     await loadIstatistikler();
     await loadEkipmanlar();
     await loadHareketler();
@@ -37,11 +40,23 @@ function setupEventListeners() {
     document.getElementById('ekipman-form').addEventListener('submit', handleEkipmanSubmit);
     document.getElementById('hareket-form').addEventListener('submit', handleHareketSubmit);
     document.getElementById('kategori-form').addEventListener('submit', handleKategoriSubmit);
+    document.getElementById('depo-form').addEventListener('submit', handleDepoSubmit);
+    document.getElementById('depo-transfer-form').addEventListener('submit', handleDepoTransferSubmit);
+
+    const toggleDepoFormBtn = document.getElementById('toggle-depo-form');
+    const closeDepoFormBtn = document.getElementById('close-depo-form');
+    if (toggleDepoFormBtn) {
+        toggleDepoFormBtn.addEventListener('click', toggleDepoForm);
+    }
+    if (closeDepoFormBtn) {
+        closeDepoFormBtn.addEventListener('click', toggleDepoForm);
+    }
 
     // Filters
     document.getElementById('search-input').addEventListener('input', filterEkipman);
     document.getElementById('kategori-filter').addEventListener('change', filterEkipman);
     document.getElementById('durum-filter').addEventListener('change', filterEkipman);
+    document.getElementById('depo-filter').addEventListener('change', filterEkipman);
 
     // Modal
     document.querySelector('.close').addEventListener('click', closeModal);
@@ -114,9 +129,52 @@ function switchTab(tabName) {
         loadHareketler();
     } else if (tabName === 'kategoriler') {
         loadKategorilerTab();
+    } else if (tabName === 'depolar') {
+        loadDepolarTab();
     } else if (tabName === 'kullanicilar') {
         loadKullanicilar();
     }
+}
+
+function parseOptionalInt(value) {
+    if (value === null || value === undefined || value === '') {
+        return null;
+    }
+    const parsed = parseInt(value, 10);
+    return Number.isNaN(parsed) ? null : parsed;
+}
+
+// Load Depolar
+async function loadDepolar() {
+    try {
+        const response = await fetch(`${API_URL}/depolar`);
+        depolar = await response.json();
+    } catch (error) {
+        console.error('Depolar yüklenemedi:', error);
+        depolar = [];
+    }
+}
+
+function populateDepoSelects() {
+    const selects = [
+        { id: 'depo_id', empty: 'Depo Seçiniz...' },
+        { id: 'edit-depo_id', empty: 'Depo Seçiniz...' },
+        { id: 'depo-filter', empty: 'Tüm Depolar' },
+        { id: 'transfer-kaynak-depo', empty: '(Opsiyonel) Kaynak Depo' },
+        { id: 'transfer-hedef-depo', empty: 'Hedef Depo Seçiniz...' }
+    ];
+
+    selects.forEach(cfg => {
+        const select = document.getElementById(cfg.id);
+        if (!select) return;
+        select.innerHTML = `<option value="">${cfg.empty}</option>`;
+        depolar.forEach(depo => {
+            const option = document.createElement('option');
+            option.value = depo.id;
+            option.textContent = depo.ad;
+            select.appendChild(option);
+        });
+    });
 }
 
 // Load Kategoriler
@@ -528,11 +586,13 @@ function filterEkipman() {
     const search = document.getElementById('search-input').value;
     const kategori = document.getElementById('kategori-filter').value;
     const durum = document.getElementById('durum-filter').value;
+    const depoId = document.getElementById('depo-filter').value;
 
     const filters = {};
     if (search) filters.arama = search;
     if (kategori) filters.kategori = kategori;
     if (durum) filters.durum = durum;
+    if (depoId) filters.depo_id = depoId;
 
     // Gelişmiş filtreler
     const tedarikci = document.getElementById('tedarikci-filter');
@@ -555,6 +615,7 @@ function clearFilters() {
     document.getElementById('search-input').value = '';
     document.getElementById('kategori-filter').value = '';
     document.getElementById('durum-filter').value = '';
+    document.getElementById('depo-filter').value = '';
     const ids = ['tedarikci-filter', 'fiyat-min-filter', 'fiyat-max-filter', 'tarih-min-filter', 'tarih-max-filter'];
     ids.forEach(id => {
         const el = document.getElementById(id);
@@ -573,6 +634,7 @@ async function handleEkipmanSubmit(e) {
         model: document.getElementById('model').value,
         seri_no: document.getElementById('seri_no').value,
         durum: document.getElementById('durum').value,
+        depo_id: parseOptionalInt(document.getElementById('depo_id').value),
         temin_tarihi: document.getElementById('temin_tarihi').value || null,
         temin_fiyati: parseFloat(document.getElementById('temin_fiyati').value) || null,
         tedarikci: document.getElementById('tedarikci').value,
@@ -597,6 +659,8 @@ async function handleEkipmanSubmit(e) {
             // Kategori listesini yeniden yükle
             await loadKategoriler();
             populateKategoriSelects();
+            await loadDepolar();
+            populateDepoSelects();
             
             await loadEkipmanlar();
             await loadIstatistikler();
@@ -629,6 +693,7 @@ async function showEkipmanDetail(id) {
                     <tr><td><strong>Marka:</strong></td><td>${ekipman.marka || '-'}</td></tr>
                     <tr><td><strong>Model:</strong></td><td>${ekipman.model || '-'}</td></tr>
                     <tr><td><strong>Seri No:</strong></td><td>${ekipman.seri_no || '-'}</td></tr>
+                    <tr><td><strong>Depo:</strong></td><td>${ekipman.depo_adi || '-'}</td></tr>
                     <tr><td><strong>Durum:</strong></td><td><span class="status-badge status-${ekipman.durum.toLowerCase().replace('ı', 'i')}">${ekipman.durum}</span></td></tr>
                     <tr><td><strong>Temin Tarihi:</strong></td><td>${ekipman.temin_tarihi ? new Date(ekipman.temin_tarihi).toLocaleDateString('tr-TR') : '-'}</td></tr>
                     <tr><td><strong>Temin Fiyatı:</strong></td><td>${ekipman.temin_fiyati ? ekipman.temin_fiyati + ' ₺' : '-'}</td></tr>
@@ -685,6 +750,7 @@ async function editEkipman(id) {
         document.getElementById('edit-model').value = ekipman.model || '';
         document.getElementById('edit-seri_no').value = ekipman.seri_no || '';
         document.getElementById('edit-durum').value = ekipman.durum || 'Depoda';
+        document.getElementById('edit-depo_id').value = ekipman.depo_id || '';
         document.getElementById('edit-tedarikci').value = ekipman.tedarikci || '';
         document.getElementById('edit-notlar').value = ekipman.notlar || '';
 
@@ -753,6 +819,7 @@ async function handleEditSubmit(e) {
         model: document.getElementById('edit-model').value,
         seri_no: document.getElementById('edit-seri_no').value,
         durum: document.getElementById('edit-durum').value,
+        depo_id: parseOptionalInt(document.getElementById('edit-depo_id').value),
         temin_tarihi: document.getElementById('edit-temin_tarihi').value || null,
         temin_fiyati: parseFloat(document.getElementById('edit-temin_fiyati').value) || null,
         tedarikci: document.getElementById('edit-tedarikci').value,
@@ -773,6 +840,8 @@ async function handleEditSubmit(e) {
             closeEditModal();
             await loadEkipmanlar();
             await loadIstatistikler();
+            await loadDepolar();
+            populateDepoSelects();
         } else {
             showAlert('Hata: ' + result.error, 'error');
         }
@@ -914,6 +983,141 @@ async function loadHareketler() {
     } catch (error) {
         console.error('Hareketler yüklenemedi:', error);
     }
+}
+
+// ---- DEPO YÖNETİMİ ----
+async function loadDepolarTab() {
+    await loadDepolar();
+    populateDepoSelects();
+
+    const tbody = document.getElementById('depolar-tbody');
+    if (!tbody) return;
+
+    if (depolar.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="loading">Depo bulunamadı.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = depolar.map(depo => `
+        <tr>
+            <td>${depo.id}</td>
+            <td><strong>${depo.ad}</strong></td>
+            <td>${depo.lokasyon || '-'}</td>
+            <td>${depo.ekipman_sayisi || 0}</td>
+            <td>
+                <button class="btn btn-danger btn-small" onclick="deleteDepo(${depo.id}, '${depo.ad.replace(/'/g, "\\'")}', ${depo.ekipman_sayisi || 0})">Sil</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function handleDepoSubmit(e) {
+    e.preventDefault();
+    const ad = document.getElementById('depo-ad').value.trim();
+    const lokasyon = document.getElementById('depo-lokasyon').value.trim();
+    const aciklama = document.getElementById('depo-aciklama').value.trim();
+
+    if (!ad) {
+        showAlert('Depo adı zorunludur.', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/depolar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ad, lokasyon, aciklama })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            showAlert('Depo eklendi!', 'success');
+            document.getElementById('depo-form').reset();
+            const container = document.getElementById('depo-form-container');
+            if (container) {
+                container.style.display = 'none';
+            }
+            await loadDepolarTab();
+            await loadEkipmanlar();
+        } else {
+            showAlert('Hata: ' + result.error, 'error');
+        }
+    } catch (error) {
+        showAlert('Depo eklenirken hata oluştu!', 'error');
+    }
+}
+
+async function handleDepoTransferSubmit(e) {
+    e.preventDefault();
+
+    const formData = {
+        ekipman_id: parseOptionalInt(document.getElementById('transfer-ekipman-id').value),
+        kaynak_depo_id: parseOptionalInt(document.getElementById('transfer-kaynak-depo').value),
+        hedef_depo_id: parseOptionalInt(document.getElementById('transfer-hedef-depo').value),
+        aciklama: document.getElementById('transfer-aciklama').value
+    };
+
+    if (!formData.ekipman_id || !formData.hedef_depo_id) {
+        showAlert('Ekipman ID ve hedef depo zorunludur.', 'error');
+        return;
+    }
+
+    if (formData.kaynak_depo_id && formData.kaynak_depo_id === formData.hedef_depo_id) {
+        showAlert('Kaynak ve hedef depo aynı olamaz.', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/depolar/transfer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            showAlert(result.message || 'Transfer başarılı.', 'success');
+            document.getElementById('depo-transfer-form').reset();
+            await loadDepolarTab();
+            await loadEkipmanlar();
+            await loadHareketler();
+            await loadIstatistikler();
+        } else {
+            showAlert('Hata: ' + result.error, 'error');
+        }
+    } catch (error) {
+        showAlert('Transfer sırasında hata oluştu!', 'error');
+    }
+}
+
+async function deleteDepo(id, ad, ekipmanSayisi) {
+    if (ekipmanSayisi > 0) {
+        showAlert(`"${ad}" deposunda ekipman bulunduğu için silinemez.`, 'error');
+        return;
+    }
+
+    if (!confirm(`"${ad}" deposunu silmek istediğinizden emin misiniz?`)) return;
+
+    try {
+        const response = await fetch(`${API_URL}/depolar/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+
+        if (result.success) {
+            showAlert('Depo silindi.', 'success');
+            await loadDepolarTab();
+            await loadEkipmanlar();
+        } else {
+            showAlert('Hata: ' + result.error, 'error');
+        }
+    } catch (error) {
+        showAlert('Depo silinirken hata oluştu!', 'error');
+    }
+}
+
+function toggleDepoForm() {
+    const container = document.getElementById('depo-form-container');
+    if (!container) return;
+    container.style.display = container.style.display === 'none' ? 'block' : 'none';
 }
 
 // Display Hareketler

@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
 from flask_cors import CORS
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from models import db, Ekipman, EkipmanHareket, Kategori, User
+from models import db, Ekipman, EkipmanHareket, Kategori, User, Depo
 from datetime import datetime
 import os
 import io
@@ -14,6 +14,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from sqlalchemy import inspect, text
 
 # Türkçe karakter desteği için Arial Unicode font kaydı
 _ARIAL_UNICODE = '/System/Library/Fonts/Supplemental/Arial Unicode.ttf'
@@ -38,6 +39,19 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Bu sayfaya erişmek için giriş yapmanız gerekiyor.'
+
+
+def ensure_schema_updates():
+    """Mevcut veritabanında eksik depo şemasını güvenli şekilde tamamla."""
+    inspector = inspect(db.engine)
+
+    if not inspector.has_table('depo'):
+        Depo.__table__.create(bind=db.engine)
+
+    ekipman_columns = [col['name'] for col in inspector.get_columns('ekipman')]
+    if 'depo_id' not in ekipman_columns:
+        db.session.execute(text('ALTER TABLE ekipman ADD COLUMN depo_id INTEGER'))
+        db.session.commit()
 
 
 @login_manager.user_loader
@@ -218,6 +232,7 @@ def get_ekipman():
     durum = request.args.get('durum')
     arama = request.args.get('arama')
     tedarikci = request.args.get('tedarikci')
+    depo_id = request.args.get('depo_id', type=int)
     fiyat_min = request.args.get('fiyat_min', type=float)
     fiyat_max = request.args.get('fiyat_max', type=float)
     tarih_min = request.args.get('tarih_min')
@@ -241,6 +256,8 @@ def get_ekipman():
         )
     if tedarikci:
         query = query.filter(Ekipman.tedarikci.like(f'%{tedarikci}%'))
+    if depo_id:
+        query = query.filter(Ekipman.depo_id == depo_id)
     if fiyat_min is not None:
         query = query.filter(Ekipman.temin_fiyati >= fiyat_min)
     if fiyat_max is not None:
@@ -299,7 +316,8 @@ def ekipman_ekle():
             notlar=data.get('notlar'),
             temin_tarihi=temin_tarihi,
             temin_fiyati=data.get('temin_fiyati'),
-            tedarikci=data.get('tedarikci')
+            tedarikci=data.get('tedarikci'),
+            depo_id=data.get('depo_id')
         )
         
         db.session.add(ekipman)
@@ -338,6 +356,8 @@ def ekipman_guncelle(id):
             ekipman.temin_fiyati = data['temin_fiyati']
         if 'tedarikci' in data:
             ekipman.tedarikci = data['tedarikci']
+        if 'depo_id' in data:
+            ekipman.depo_id = data['depo_id']
         
         db.session.commit()
         return jsonify({'success': True, 'data': ekipman.to_dict()})
@@ -403,6 +423,117 @@ def hareket_ekle():
         db.session.commit()
         
         return jsonify({'success': True, 'id': hareket.id, 'data': hareket.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+# Depo endpoints
+@app.route('/api/depolar', methods=['GET'])
+@login_required
+def get_depolar():
+    """Tüm depoları getir"""
+    depolar = Depo.query.order_by(Depo.ad.asc()).all()
+    data = []
+    for depo in depolar:
+        item = depo.to_dict()
+        item['ekipman_sayisi'] = Ekipman.query.filter_by(depo_id=depo.id).count()
+        data.append(item)
+    return jsonify(data)
+
+
+@app.route('/api/depolar', methods=['POST'])
+@login_required
+def add_depo():
+    """Yeni depo ekle"""
+    data = request.get_json() or {}
+    ad = data.get('ad', '').strip()
+    lokasyon = data.get('lokasyon', '').strip()
+    aciklama = data.get('aciklama', '').strip()
+
+    if not ad:
+        return jsonify({'success': False, 'error': 'Depo adı zorunludur.'}), 400
+    if Depo.query.filter_by(ad=ad).first():
+        return jsonify({'success': False, 'error': 'Bu depo adı zaten kayıtlı.'}), 400
+
+    try:
+        depo = Depo(ad=ad, lokasyon=lokasyon, aciklama=aciklama)
+        db.session.add(depo)
+        db.session.commit()
+        return jsonify({'success': True, 'data': depo.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@app.route('/api/depolar/<int:depo_id>', methods=['DELETE'])
+@login_required
+def delete_depo(depo_id):
+    """Depo sil"""
+    depo = Depo.query.get_or_404(depo_id)
+    depo_ekipman_sayisi = Ekipman.query.filter_by(depo_id=depo_id).count()
+    if depo_ekipman_sayisi > 0:
+        return jsonify({
+            'success': False,
+            'error': f'Bu depoda {depo_ekipman_sayisi} ekipman var. Önce ekipmanları taşıyın.'
+        }), 400
+
+    try:
+        db.session.delete(depo)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Depo silindi.'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@app.route('/api/depolar/transfer', methods=['POST'])
+@login_required
+def transfer_depo_arasi():
+    """Ekipmanı depolar arasında taşı"""
+    data = request.get_json() or {}
+    ekipman_id = data.get('ekipman_id')
+    hedef_depo_id = data.get('hedef_depo_id')
+    kaynak_depo_id = data.get('kaynak_depo_id')
+
+    if not ekipman_id or not hedef_depo_id:
+        return jsonify({'success': False, 'error': 'Ekipman ve hedef depo zorunludur.'}), 400
+
+    ekipman = Ekipman.query.get_or_404(ekipman_id)
+    hedef_depo = Depo.query.get_or_404(hedef_depo_id)
+    kaynak_depo = None
+
+    if kaynak_depo_id:
+        kaynak_depo = Depo.query.get_or_404(kaynak_depo_id)
+        if ekipman.depo_id != kaynak_depo.id:
+            return jsonify({'success': False, 'error': 'Ekipman seçilen kaynak depoda bulunmuyor.'}), 400
+
+    if ekipman.depo_id == hedef_depo.id:
+        return jsonify({'success': False, 'error': 'Ekipman zaten bu depoda bulunuyor.'}), 400
+
+    try:
+        eski_depo_adi = ekipman.depo.ad if ekipman.depo else 'Depo tanımsız'
+        ekipman.depo_id = hedef_depo.id
+        ekipman.durum = 'Depoda'
+
+        hareket = EkipmanHareket(
+            ekipman_id=ekipman.id,
+            hareket_tipi='Transfer',
+            birim='Depo Yönetimi',
+            lokasyon=f'{eski_depo_adi} -> {hedef_depo.ad}',
+            aciklama=data.get('aciklama') or f'Depolar arası transfer: {eski_depo_adi} -> {hedef_depo.ad}',
+            teslim_alan=data.get('teslim_alan'),
+            onaylayan=data.get('onaylayan')
+        )
+
+        db.session.add(hareket)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'Ekipman {eski_depo_adi} deposundan {hedef_depo.ad} deposuna taşındı.',
+            'data': ekipman.to_dict()
+        })
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 400
@@ -781,6 +912,7 @@ def toplu_sil():
 
 if __name__ == '__main__':
     with app.app_context():
+        ensure_schema_updates()
         db.create_all()
         # Varsayılan admin kullanıcı oluştur
         if not User.query.filter_by(username='admin').first():
