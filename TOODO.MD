@@ -10,9 +10,9 @@
 - [ ] Departman bazlı toplam zimmet özeti ekranı/raporu eklensin.
 
 ## Depo Yönetimi
-- [ ] Birden fazla depo tanımı eklensin.
-- [ ] Depolar arası malzeme taşıma işlemi eklensin.
-- [ ] Depolar arası transfer için hareket geçmişi (kim, ne zaman, hangi miktar) tutulsun.
+- [/] Birden fazla depo tanımı eklensin.
+- [/] Depolar arası malzeme taşıma işlemi eklensin.
+- [/] Depolar arası transfer için hareket geçmişi (kim, ne zaman, hangi miktar) tutulsun.
 
 ## Kategori Yapısı
 - [ ] Ana kategori yapısı oluşturulsun.

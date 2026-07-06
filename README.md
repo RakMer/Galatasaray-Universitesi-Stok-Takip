@@ -39,7 +39,7 @@ python init_db.py
 python app.py
 ```
 
-6. Tarayıcıda aç: `http://localhost:5000`
+6. Tarayıcıda aç: `http://localhost:5001`
 
 ## Kullanım
 

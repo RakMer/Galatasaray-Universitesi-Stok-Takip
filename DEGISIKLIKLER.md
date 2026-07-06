@@ -28,7 +28,7 @@
 - **Sorun**: 403 Forbidden hatası alınıyordu
 - **Çözüm**: 
   - Flask-CORS yapılandırması genişletildi
-  - API URL'i relative path olarak değiştirildi (`/api` yerine `http://localhost:5000/api`)
+  - API URL'i relative path olarak değiştirildi (geçici `http://localhost:5001/api` yerine `/api`)
   - CORS headers eklendi (OPTIONS, GET, POST, PUT, DELETE methodları)
 
 #### 4. Frontend Geliştirme
@@ -134,7 +134,7 @@
 ## ✅ Mevcut Çalışan Özellikler
 
 ### Backend (app.py)
-- [x] ✅ Flask uygulaması çalışıyor (Port 5000)
+- [x] ✅ Flask uygulaması çalışıyor (Port 5001)
 - [x] ✅ CORS yapılandırması aktif
 - [x] ✅ SQLite veritabanı bağlantısı
 - [x] ✅ API Endpoints:
@@ -195,7 +195,7 @@ python init_db.py
 python app.py
 ```
 
-Uygulama: http://localhost:5000
+Uygulama: http://localhost:5001
 
 ---
 
